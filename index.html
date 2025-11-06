@@ -62,18 +62,18 @@
         transform: rotate(30deg);
       }
 
+      /* normal balloon tie (no trapezoid) */
       .balloon::after {
         content: "";
         position: absolute;
-        bottom: -20px;
+        bottom: -10px;
         left: 50%;
         transform: translateX(-50%);
-        width: 30px;
-        /* height: 40px; */
+        width: 14px;
+        height: 14px;
         background-color: #ff0000;
-        clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%);
-        /* border: 3px solid #000; */
-        border-top: none;
+        border-radius: 50% 50% 70% 70%;
+        border: 2px solid #000;
       }
 
       .string {
@@ -129,20 +129,32 @@
     </div>
 
     <script>
+      let audioContext;
+
       document.addEventListener("DOMContentLoaded", () => {
         const balloon = document.getElementById("balloon");
         const balloonContainer = document.getElementById("balloonContainer");
 
-        // Pop sound using Web Audio API with noise burst
         function createPopSound() {
-          const audioContext = new (window.AudioContext ||
-            window.webkitAudioContext)();
-          const bufferSize = audioContext.sampleRate * 0.1; // 100 ms
-          const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+          if (!audioContext) {
+            audioContext = new (window.AudioContext ||
+              window.webkitAudioContext)();
+          }
+          if (audioContext.state === "suspended") {
+            audioContext.resume();
+          }
+
+          const bufferSize = audioContext.sampleRate * 0.1;
+          const buffer = audioContext.createBuffer(
+            1,
+            bufferSize,
+            audioContext.sampleRate
+          );
           const data = buffer.getChannelData(0);
 
           for (let i = 0; i < bufferSize; i++) {
-            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2); // noise envelope
+            data[i] =
+              (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
           }
 
           const noise = audioContext.createBufferSource();
@@ -150,17 +162,18 @@
 
           const gain = audioContext.createGain();
           gain.gain.setValueAtTime(1, audioContext.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+          gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            audioContext.currentTime + 0.1
+          );
 
           noise.connect(gain);
           gain.connect(audioContext.destination);
           noise.start();
         }
 
-        // Generate balloon explosion pieces
         function createExplosion(x, y) {
           const container = document.querySelector(".container");
-
           for (let i = 0; i < 20; i++) {
             const piece = document.createElement("div");
             piece.classList.add("piece");
@@ -168,7 +181,6 @@
             piece.style.left = `${x - 10}px`;
             piece.style.top = `${y - 10}px`;
 
-            // random trajectory and rotation
             const angle = Math.random() * 2 * Math.PI;
             const distance = 150 + Math.random() * 150;
             const rotate = Math.random() * 720 - 360;
@@ -176,34 +188,34 @@
             piece.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
             piece.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
             piece.style.setProperty("--r", `${rotate}deg`);
-
             piece.style.animation = "fly 0.8s ease-out forwards";
 
             container.appendChild(piece);
-
-            // Remove piece after animation
             setTimeout(() => piece.remove(), 800);
           }
         }
 
-        // Balloon pop handler
         function popBalloon() {
-          balloon.style.visibility = "hidden";
           createPopSound();
+          balloon.style.visibility = "hidden";
 
           const rect = balloon.getBoundingClientRect();
           const x = rect.left + rect.width / 2;
           const y = rect.top + rect.height / 2;
-
           createExplosion(x, y);
 
-          // Recreate balloon after delay
           setTimeout(() => {
             balloon.style.visibility = "visible";
           }, 1500);
         }
 
+        // Important for iOS: create/resume AudioContext directly on tap
         balloonContainer.addEventListener("click", popBalloon);
+        balloonContainer.addEventListener("touchstart", () => {
+          if (audioContext && audioContext.state === "suspended") {
+            audioContext.resume();
+          }
+        });
       });
     </script>
   </body>
