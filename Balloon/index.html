@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Balloon Pop</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(to bottom, #87ceeb, #1e90ff);
+        font-family: Arial, sans-serif;
+        overflow: hidden;
+      }
+
+      .container {
+        position: relative;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      .balloon-container {
+        position: relative;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .balloon-container:hover {
+        transform: scale(1.05);
+      }
+
+      .balloon {
+        width: 150px;
+        height: 180px;
+        background-color: #ff0000;
+        border-radius: 50%;
+        position: relative;
+        border: 3px solid #000;
+        box-shadow: inset -10px -10px 10px rgba(0, 0, 0, 0.2);
+      }
+
+      .balloon::before {
+        content: "";
+        position: absolute;
+        top: 15px;
+        left: 25px;
+        width: 40px;
+        height: 60px;
+        background: rgba(255, 255, 255, 0.5);
+        border-radius: 50%;
+        transform: rotate(30deg);
+      }
+
+      .balloon::after {
+        content: "";
+        position: absolute;
+        bottom: -20px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 30px;
+        /* height: 40px; */
+        background-color: #ff0000;
+        clip-path: polygon(0 0, 100% 0, 70% 100%, 30% 100%);
+        /* border: 3px solid #000; */
+        border-top: none;
+      }
+
+      .string {
+        position: absolute;
+        bottom: -150px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 2px;
+        height: 150px;
+        background-color: #000;
+      }
+
+      .piece {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        border-radius: 20%;
+        background-color: #ff0000;
+        border: 2px solid #000;
+        opacity: 1;
+        pointer-events: none;
+      }
+
+      .instructions {
+        position: absolute;
+        bottom: 20px;
+        text-align: center;
+        color: white;
+        font-size: 18px;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        width: 100%;
+      }
+
+      @keyframes fly {
+        0% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+        100% {
+          transform: translate(var(--x), var(--y)) rotate(var(--r));
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="balloon-container" id="balloonContainer">
+        <div class="balloon" id="balloon"></div>
+        <div class="string"></div>
+      </div>
+      <div class="instructions">Click the balloon to pop it!</div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const balloon = document.getElementById("balloon");
+        const balloonContainer = document.getElementById("balloonContainer");
+
+        // Pop sound using Web Audio API with noise burst
+        function createPopSound() {
+          const audioContext = new (window.AudioContext ||
+            window.webkitAudioContext)();
+          const bufferSize = audioContext.sampleRate * 0.1; // 100 ms
+          const buffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+          const data = buffer.getChannelData(0);
+
+          for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2); // noise envelope
+          }
+
+          const noise = audioContext.createBufferSource();
+          noise.buffer = buffer;
+
+          const gain = audioContext.createGain();
+          gain.gain.setValueAtTime(1, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+          noise.connect(gain);
+          gain.connect(audioContext.destination);
+          noise.start();
+        }
+
+        // Generate balloon explosion pieces
+        function createExplosion(x, y) {
+          const container = document.querySelector(".container");
+
+          for (let i = 0; i < 20; i++) {
+            const piece = document.createElement("div");
+            piece.classList.add("piece");
+
+            piece.style.left = `${x - 10}px`;
+            piece.style.top = `${y - 10}px`;
+
+            // random trajectory and rotation
+            const angle = Math.random() * 2 * Math.PI;
+            const distance = 150 + Math.random() * 150;
+            const rotate = Math.random() * 720 - 360;
+
+            piece.style.setProperty("--x", `${Math.cos(angle) * distance}px`);
+            piece.style.setProperty("--y", `${Math.sin(angle) * distance}px`);
+            piece.style.setProperty("--r", `${rotate}deg`);
+
+            piece.style.animation = "fly 0.8s ease-out forwards";
+
+            container.appendChild(piece);
+
+            // Remove piece after animation
+            setTimeout(() => piece.remove(), 800);
+          }
+        }
+
+        // Balloon pop handler
+        function popBalloon() {
+          balloon.style.visibility = "hidden";
+          createPopSound();
+
+          const rect = balloon.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top + rect.height / 2;
+
+          createExplosion(x, y);
+
+          // Recreate balloon after delay
+          setTimeout(() => {
+            balloon.style.visibility = "visible";
+          }, 1500);
+        }
+
+        balloonContainer.addEventListener("click", popBalloon);
+      });
+    </script>
+  </body>
+</html>
