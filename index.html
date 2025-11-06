@@ -62,7 +62,6 @@
         transform: rotate(30deg);
       }
 
-      /* normal balloon tie (no trapezoid) */
       .balloon::after {
         content: "";
         position: absolute;
@@ -130,16 +129,24 @@
 
     <script>
       let audioContext;
+      let audioInitialized = false;
 
       document.addEventListener("DOMContentLoaded", () => {
         const balloon = document.getElementById("balloon");
         const balloonContainer = document.getElementById("balloonContainer");
 
+        function initializeAudio() {
+          if (audioInitialized) return;
+          
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          audioInitialized = true;
+        }
+
         function createPopSound() {
-          if (!audioContext) {
-            audioContext = new (window.AudioContext ||
-              window.webkitAudioContext)();
+          if (!audioInitialized) {
+            initializeAudio();
           }
+          
           if (audioContext.state === "suspended") {
             audioContext.resume();
           }
@@ -209,13 +216,12 @@
           }, 1500);
         }
 
-        // Important for iOS: create/resume AudioContext directly on tap
-        balloonContainer.addEventListener("click", popBalloon);
+        // Initialize audio on first user interaction
         balloonContainer.addEventListener("touchstart", () => {
-          if (audioContext && audioContext.state === "suspended") {
-            audioContext.resume();
-          }
+          initializeAudio();
         });
+        
+        balloonContainer.addEventListener("click", popBalloon);
       });
     </script>
   </body>
